@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createBackupSync, listBackups, deleteBackup, cleanupOldBackups } from '@/lib/backup';
+import { createBackupSync, listBackups, deleteBackup, cleanupOldBackups, getBackupDirPath } from '@/lib/backup';
 import { db } from '@/lib/db';
 
 // Manual backup
@@ -12,7 +12,7 @@ export async function GET() {
 
     const { statSync, existsSync } = await import('fs');
     const { join } = await import('path');
-    const BACKUP_DIR = '/home/z/my-project/download/backups';
+    const BACKUP_DIR = getBackupDirPath();
     const size = existsSync(join(BACKUP_DIR, result.fileName)) ? statSync(join(BACKUP_DIR, result.fileName)).size : 0;
 
     return NextResponse.json({

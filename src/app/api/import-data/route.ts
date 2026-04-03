@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
 import os from 'os';
-
-const { PrismaClient } = await import('@prisma/client');
-const prisma = new PrismaClient();
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const mode = formData.get('mode') as string | null; // 'vehicles' | 'fuel' | 'all'
+    const mode = formData.get('mode') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'لم يتم اختيار ملف' }, { status: 400 });
@@ -22,7 +20,6 @@ export async function POST(request: NextRequest) {
     // Save uploaded file temporarily using OS temp dir (works on all platforms)
     const tempDir = process.env.SMARTFLEET_TMP || os.tmpdir();
     const tempPath = join(tempDir, `smartfleet-import-${Date.now()}.xlsx`);
-    // Ensure temp dir exists
     if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true });
     }
@@ -55,14 +52,13 @@ export async function POST(request: NextRequest) {
                   continue;
                 }
 
-                // Check duplicate by SN
-                const existing = await prisma.vehicle.findUnique({ where: { id: `v-${sn}` } });
+                const existing = await db.vehicle.findUnique({ where: { id: `v-${sn}` } });
                 if (existing) {
                   result.vehicles.skipped++;
                   continue;
                 }
 
-                await prisma.vehicle.create({
+                await db.vehicle.create({
                   data: {
                     id: `v-${sn}`,
                     sn,
@@ -109,8 +105,7 @@ export async function POST(request: NextRequest) {
             const ws = wb.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
 
-            // Build vehicle lookup
-            const vehicles = await prisma.vehicle.findMany({
+            const vehicles = await db.vehicle.findMany({
               select: { id: true, cardNo: true, cardName: true },
             });
             const cardToVehicle = new Map<string, string>();
@@ -119,8 +114,7 @@ export async function POST(request: NextRequest) {
               if (v.cardName) cardToVehicle.set(v.cardName, v.id);
             }
 
-            // Get existing fuel transactions for duplicate check
-            const existingTx = await prisma.fuelTransaction.findMany({
+            const existingTx = await db.fuelTransaction.findMany({
               select: { vehicleId: true, transactionDate: true, amount: true, type: true },
             });
             const txKeySet = new Set<string>();
@@ -140,7 +134,6 @@ export async function POST(request: NextRequest) {
                   continue;
                 }
 
-                // Parse date
                 const rawDate = row['Transaction Date'];
                 let txDate: Date;
                 if (typeof rawDate === 'number') {
@@ -166,14 +159,13 @@ export async function POST(request: NextRequest) {
                 const amount = Math.abs(Number(row['Amount']) || 0);
                 const type = String(row['Type (D/C)'] || 'D');
 
-                // Check duplicate
                 const dedupKey = `${vehicleId}-${txDate.getTime()}-${amount}-${type}`;
                 if (txKeySet.has(dedupKey)) {
                   result.fuelTransactions.skipped++;
                   continue;
                 }
 
-                await prisma.fuelTransaction.create({
+                await db.fuelTransaction.create({
                   data: {
                     vehicleId,
                     cardNumber,
@@ -204,8 +196,6 @@ export async function POST(request: NextRequest) {
     // Cleanup temp file
     if (existsSync(tempPath)) unlinkSync(tempPath);
 
-    await prisma.$disconnect();
-
     return NextResponse.json({
       success: true,
       message: 'تم استيراد البيانات بنجاح',
@@ -214,7 +204,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Import error:', error);
-    await prisma.$disconnect();
     return NextResponse.json({ error: 'خطأ في استيراد البيانات' }, { status: 500 });
   }
 }

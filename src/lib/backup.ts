@@ -1,14 +1,38 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, copyFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import os from 'os';
 
-const DB_PATH = '/home/z/my-project/db/custom.db';
-const BACKUP_DIR = '/home/z/my-project/download/backups';
+// Get DB path from runtime env (set by Electron main.js)
+// Falls back to a local path for dev mode
+function getDbPath(): string {
+  const dbUrl = process.env.DATABASE_URL || '';
+  if (dbUrl.startsWith('file:///')) {
+    return dbUrl.replace('file:///', '');
+  }
+  // Dev fallback
+  return join(process.cwd(), 'db', 'custom.db');
+}
+
+// Get backup directory - use userData path if available (Electron),
+// otherwise use OS temp directory
+function getBackupDir(): string {
+  // If we're in Electron, app data dir is available
+  if (process.env.SMARTFLEET_APP_DATA) {
+    return join(process.env.SMARTFLEET_APP_DATA, 'backups');
+  }
+  // Fallback: use temp dir
+  return join(os.tmpdir(), 'smartfleet-backups');
+}
+
 const MAX_AUTO_BACKUPS = 30;
 
 export function createBackupSync(prefix = 'smartfleet-backup'): { success: boolean; fileName: string; error?: string } {
   try {
+    const BACKUP_DIR = getBackupDir();
+    const DB_PATH = getDbPath();
+
     if (!existsSync(BACKUP_DIR)) mkdirSync(BACKUP_DIR, { recursive: true });
-    if (!existsSync(DB_PATH)) return { success: false, fileName: '', error: 'قاعدة البيانات غير موجودة' };
+    if (!existsSync(DB_PATH)) return { success: false, fileName: '', error: 'Database file not found' };
 
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -19,12 +43,13 @@ export function createBackupSync(prefix = 'smartfleet-backup'): { success: boole
 
     return { success: true, fileName };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'خطأ مجهول';
+    const msg = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, fileName: '', error: msg };
   }
 }
 
 export function listBackups(): { fileName: string; size: number; createdAt: string; isAuto: boolean }[] {
+  const BACKUP_DIR = getBackupDir();
   if (!existsSync(BACKUP_DIR)) return [];
 
   return readdirSync(BACKUP_DIR)
@@ -43,6 +68,7 @@ export function listBackups(): { fileName: string; size: number; createdAt: stri
 
 export function deleteBackup(fileName: string): boolean {
   try {
+    const BACKUP_DIR = getBackupDir();
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '');
     if (!safeName) return false;
     const filePath = join(BACKUP_DIR, safeName);
@@ -56,6 +82,7 @@ export function deleteBackup(fileName: string): boolean {
 
 export function cleanupOldBackups(): number {
   try {
+    const BACKUP_DIR = getBackupDir();
     if (!existsSync(BACKUP_DIR)) return 0;
     const autoBackups = readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith('smartfleet-auto-'))
@@ -73,4 +100,8 @@ export function cleanupOldBackups(): number {
   } catch {
     return 0;
   }
+}
+
+export function getBackupDirPath(): string {
+  return getBackupDir();
 }

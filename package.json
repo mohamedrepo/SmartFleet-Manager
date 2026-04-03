@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build --webpack && node post-build.js && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r prisma .next/standalone/ && cp electron/main.js .next/standalone/electron/ && cp electron/preload.js .next/standalone/electron/ && cp electron/db.js .next/standalone/electron/ && cp -r node_modules/.prisma .next/standalone/node_modules/.prisma",
+    "build": "next build --webpack && node post-build.js && node copy-standalone-assets.js",
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "electron": "electron .",
     "electron:dev": "concurrently \"next dev -p 3456\" \"wait-on http://127.0.0.1:3456 && electron .\"",

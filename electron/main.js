@@ -292,6 +292,7 @@ function startServer(serverPath, serverCwd, prismaEnginesPath) {
     ELECTRON_RUN_AS_NODE: '1',
     NODE_PATH: nodeModulesPath,
     SMARTFLEET_TMP: os.tmpdir(),
+    SMARTFLEET_APP_DATA: app.getPath('userData'),
   };
 
   console.log('[SmartFleet] ══════════════════════════════════');
