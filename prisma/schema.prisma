@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id             String   @id @default(cuid())
+  sn             Int
+  type           String
+  model          String
+  licencePlate   String
+  licenceNo      Int
+  year           Int
+  chassisNo      String
+  engineSn       String
+  fuel           String
+  allocations    Float
+  tankCapacity   Float
+  kmReading      Float
+  fuelRate       Float
+  branch         String
+  cardName       String
+  cardNo         String
+  openingBalance Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workOrders     WorkOrder[]
+  fuelTransactions FuelTransaction[]
+  maintenanceRecords MaintenanceRecord[]
+  tires          Tire[]
+  spareParts     SparePart[]
+}
+
+model WorkOrder {
+  id               String   @id @default(cuid())
+  orderNo          Int      @unique
+  vehicleId        String
+  driverName       String
+  distributor      String
+  departureBranch  String   @default("")
+  destinationBranch String  @default("")
+  branch           String
+  departureKm      Float
+  stops            String   // JSON array of stop points: [{name, lat, lon}]
+  estimatedDistance  Float
+  estimatedTime    String
+  estimatedArrival String
+  returnKm       Float?
+  actualDistance Float?
+  distanceDeviation Float?
+  status         String   @default("open") // open, in_progress, closed
+  departureDate  DateTime @default(now())
+  returnDate     DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model FuelTransaction {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  cardNumber      String
+  cardName        String
+  onlineBalance   Float
+  transactionDate DateTime
+  description     String
+  amount          Float
+  type            String   // D = Debit/Purchase, C = Credit/Payment
+  createdAt       DateTime @default(now())
+
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model MaintenanceRecord {
+  id             String   @id @default(cuid())
+  vehicleId      String
+  type           String   // oil_change, filter, belt, wash, lubrication, quick_service, other
+  description    String
+  cost           Float
+  kmAtService    Float
+  nextServiceKm  Float?
+  serviceDate    DateTime @default(now())
+  provider       String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Tire {
+  id             String   @id @default(cuid())
+  vehicleId      String
+  position       String   // front_left, front_right, rear_left, rear_right, spare
+  brand          String?
+  size           String?
+  installDate    DateTime @default(now())
+  installKm      Float
+  currentKm      Float
+  maxKm          Float?
+  status         String   @default("active") // active, rotated, replaced
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model SparePart {
+  id             String   @id @default(cuid())
+  vehicleId      String
+  partName       String
+  quantity       Int
+  unitCost       Float
+  totalCost      Float
+  supplier       String?
+  installDate    DateTime @default(now())
+  installKm      Float?
+  expectedLife   String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+}
