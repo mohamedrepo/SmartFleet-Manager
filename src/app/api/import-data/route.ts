@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { existsSync, unlinkSync } from 'fs';
-import { execSync } from 'child_process';
-import { join } from 'path';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { join, dirname } from 'path';
 import { writeFile, readFile } from 'fs/promises';
+import os from 'os';
 
-const DB_PATH = '/home/z/my-project/db/custom.db';
-
-// Verify the db module exports a PrismaClient-like interface
 const { PrismaClient } = await import('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -22,8 +19,13 @@ export async function POST(request: NextRequest) {
 
     const validMode = mode === 'vehicles' || mode === 'fuel' ? mode : 'all';
 
-    // Save uploaded file temporarily
-    const tempPath = `/tmp/import-${Date.now()}.xlsx`;
+    // Save uploaded file temporarily using OS temp dir (works on all platforms)
+    const tempDir = process.env.SMARTFLEET_TMP || os.tmpdir();
+    const tempPath = join(tempDir, `smartfleet-import-${Date.now()}.xlsx`);
+    // Ensure temp dir exists
+    if (!existsSync(tempDir)) {
+      mkdirSync(tempDir, { recursive: true });
+    }
     const bytes = await file.arrayBuffer();
     await writeFile(tempPath, Buffer.from(bytes));
 

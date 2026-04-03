@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 node_modules
 /.pnp
@@ -16,13 +14,24 @@ node_modules
 # next.js
 /.next/
 /out/
+standalone/
 
 # production
 /build
+/dist-electron
+/dist-pack
+/SmartFleet-Manager-*
+
+# electron packaging
+*.zip
+*.zip.part-*
+/electron-win-extract/
+/electron-win.zip
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,12 +39,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
 
 # vercel
 .vercel
-
 
 # typescript
 *.tsbuildinfo
@@ -46,9 +54,17 @@ local-*
 *.log
 dev.log
 dev.out.log
+server.log
 test
 prompt
 
-server.log
 # Skills directory
 /skills/
+
+# Database
+db/*.db
+db/*.db-journal
+download/backups/*.db
+
+# Upload files (large binaries)
+/upload/

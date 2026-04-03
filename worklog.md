@@ -95,3 +95,35 @@ Stage Summary:
 - عرض مرئي واضح يفرق بين الذهاب والعودة
 - المسافة الإجمالية المخزنة = ذهاب + عودة
 - ESLint: 0 أخطاء
+
+---
+Task ID: 5b
+Agent: Main Orchestrator
+Task: Fix SQLite Error code 14 (CANTOPEN) and rebuild SmartFleet Manager v5
+
+Work Log:
+- Identified root cause: `resources/db/` directory doesn't exist, SQLite can't create database file
+- Recreated all Electron files (lost from previous session context):
+  - `electron/main.js` with critical fix: `fs.mkdirSync(dbDir, { recursive: true })` before starting server
+  - `electron/preload.js` for context bridge
+  - `afterPack.js` to create db/tmp dirs and verify Prisma engines
+  - `post-build.js` to copy Prisma engine files to standalone
+  - `pre-package.js` to create clean packaging directory
+  - `manual-package.js` to manually package Electron (bypasses electron-builder signing on Linux)
+- Created `src/app/api/db-setup/route.ts` with `mkdirSync` for database directory
+- Created error boundaries: `global-error.tsx`, `error.tsx`
+- Fixed Next.js 16 Turbopack default: added `--webpack` flag to force Webpack (prevents hashed @prisma/client module names)
+- Added Windows Prisma binary target: `binaryTargets = ["native", "windows"]` in schema.prisma
+- Downloaded `query_engine-windows.dll.node` (21MB) and included in package
+- Updated `next.config.ts` with `serverExternalPackages: ['@prisma/client']`
+- Updated `src/lib/db.ts` with PRISMA_ENGINES_PATH support
+- Downloaded Windows Electron 28.3.3 binary and manually assembled package
+- Created ZIP (208MB), split into 3 parts, uploaded to catbox.moe
+- Created `install-v5.bat` download/installer script
+
+Stage Summary:
+- SmartFleet Manager v5 with SQLite Error code 14 fix
+- Key fix: `fs.mkdirSync(dbDir, { recursive: true })` in electron/main.js
+- Webpack build (--webpack flag) to prevent Turbopack hashed modules
+- Windows Prisma engine included (query_engine-windows.dll.node)
+- Package: 3 parts on catbox.moe + install-v5.bat
