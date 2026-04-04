@@ -68,3 +68,4 @@ download/backups/*.db
 
 # Upload files (large binaries)
 /upload/
+dist/
