@@ -1,13 +1,4 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  output: "standalone",
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  reactStrictMode: false,
-  // Prevent Turbopack from hashing external module names (critical for Electron/standalone)
-  serverExternalPackages: ['@prisma/client'],
+module.exports = {
+  output: 'standalone',
+  allowedDevOrigins: ['127.0.0.1']
 };
-
-export default nextConfig;

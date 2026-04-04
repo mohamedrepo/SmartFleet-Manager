@@ -56,6 +56,8 @@ const statusMap: Record<string, { label: string; variant: 'default' | 'secondary
   closed: { label: 'مغلق', variant: 'default' },
 }
 
+const formatNumber = (value: number | null | undefined) => Number(value ?? 0).toLocaleString('ar-SA')
+
 export default function DashboardSection() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -124,7 +126,7 @@ export default function DashboardSection() {
               <div>
                 <p className="text-sm text-slate-500 font-medium">تكلفة الوقود هذا الشهر</p>
                 <p className="text-3xl font-bold text-slate-800 mt-1">
-                  {data.totalFuelCost.toLocaleString('ar-SA')} ج.م
+                  {formatNumber(data.totalFuelCost)} ج.م
                 </p>
                 <p className="text-xs text-slate-400 mt-1">جنيه مصري</p>
               </div>
@@ -179,7 +181,7 @@ export default function DashboardSection() {
                       border: '1px solid #e2e8f0',
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     }}
-                    formatter={(value: number) => [`${value.toLocaleString()} ج.م`, 'التكلفة']}
+                    formatter={(value: number) => [`${formatNumber(value)} ج.م`, 'التكلفة']}
                   />
                   <Bar dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -253,7 +255,7 @@ export default function DashboardSection() {
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
-                  formatter={(value: number) => [`${value.toLocaleString()} ج.م`, 'الإنفاق']}
+                  formatter={(value: number) => [`${formatNumber(value)} ج.م`, 'الإنفاق']}
                 />
                 <Line
                   type="monotone"
