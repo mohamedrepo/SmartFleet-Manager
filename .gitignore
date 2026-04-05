@@ -18,6 +18,7 @@ standalone/
 
 # production
 /build
+/dist
 /dist-electron
 /dist-pack
 /SmartFleet-Manager-*
