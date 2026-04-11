@@ -89,9 +89,9 @@ export async function GET() {
       }
 
       if (!tablesExist) {
-        // Create tables using raw SQL
-        const schemaSQL = `
-          CREATE TABLE IF NOT EXISTS "Vehicle" (
+        // Create each table separately to avoid SQLite multi-statement issues
+        const tableSQLs = [
+          `CREATE TABLE IF NOT EXISTS "Vehicle" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "sn" INTEGER NOT NULL,
             "type" TEXT NOT NULL DEFAULT '',
@@ -112,8 +112,8 @@ export async function GET() {
             "openingBalance" REAL NOT NULL DEFAULT 0,
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" DATETIME NOT NULL
-          );
-          CREATE TABLE IF NOT EXISTS "WorkOrder" (
+          )`,
+          `CREATE TABLE IF NOT EXISTS "WorkOrder" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "orderNo" INTEGER NOT NULL,
             "vehicleId" TEXT NOT NULL,
@@ -137,8 +137,8 @@ export async function GET() {
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" DATETIME NOT NULL,
             CONSTRAINT "WorkOrder_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-          );
-          CREATE TABLE IF NOT EXISTS "FuelTransaction" (
+          )`,
+          `CREATE TABLE IF NOT EXISTS "FuelTransaction" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "vehicleId" TEXT NOT NULL,
             "cardNumber" TEXT NOT NULL DEFAULT '',
@@ -150,8 +150,8 @@ export async function GET() {
             "type" TEXT NOT NULL DEFAULT 'D',
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT "FuelTransaction_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-          );
-          CREATE TABLE IF NOT EXISTS "MaintenanceRecord" (
+          )`,
+          `CREATE TABLE IF NOT EXISTS "MaintenanceRecord" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "vehicleId" TEXT NOT NULL,
             "type" TEXT NOT NULL DEFAULT '',
@@ -165,8 +165,8 @@ export async function GET() {
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" DATETIME NOT NULL,
             CONSTRAINT "MaintenanceRecord_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-          );
-          CREATE TABLE IF NOT EXISTS "Tire" (
+          )`,
+          `CREATE TABLE IF NOT EXISTS "Tire" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "vehicleId" TEXT NOT NULL,
             "position" TEXT NOT NULL DEFAULT '',
@@ -180,8 +180,8 @@ export async function GET() {
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" DATETIME NOT NULL,
             CONSTRAINT "Tire_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-          );
-          CREATE TABLE IF NOT EXISTS "SparePart" (
+          )`,
+          `CREATE TABLE IF NOT EXISTS "SparePart" (
             "id" TEXT NOT NULL PRIMARY KEY,
             "vehicleId" TEXT NOT NULL,
             "partName" TEXT NOT NULL DEFAULT '',
@@ -196,12 +196,14 @@ export async function GET() {
             "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "updatedAt" DATETIME NOT NULL,
             CONSTRAINT "SparePart_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-          );
-          CREATE UNIQUE INDEX IF NOT EXISTS "WorkOrder_orderNo_key" ON "WorkOrder"("orderNo");
-        `;
+          )`,
+          `CREATE UNIQUE INDEX IF NOT EXISTS "WorkOrder_orderNo_key" ON "WorkOrder"("orderNo")`
+        ]
 
-        await db.$executeRawUnsafe(schemaSQL);
-        console.log('[DB Setup] Schema created successfully via raw SQL');
+        for (const sql of tableSQLs) {
+          await db.$executeRawUnsafe(sql)
+        }
+        console.log('[DB Setup] All tables created successfully');
 
         const verifyResult = await db.$queryRawUnsafe(
           `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${requiredTables.map((name) => `'${name}'`).join(', ')})`
