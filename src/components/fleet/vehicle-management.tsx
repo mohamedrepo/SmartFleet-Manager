@@ -89,11 +89,20 @@ export default function VehicleManagement() {
     try {
       const res = await fetch(`/api/vehicles?${params}`)
       const data: VehicleListResponse = await res.json()
-      setVehicles(data.vehicles)
-      setTotal(data.total)
-      setTotalPages(data.totalPages)
+      if (data.vehicles && Array.isArray(data.vehicles)) {
+        setVehicles(data.vehicles)
+        setTotal(data.total || 0)
+        setTotalPages(data.totalPages || 1)
+      } else {
+        setVehicles([])
+        setTotal(0)
+        setTotalPages(1)
+      }
     } catch (err) {
-      console.error(err)
+      console.error('Error fetching vehicles:', err)
+      setVehicles([])
+      setTotal(0)
+      setTotalPages(1)
     } finally {
       setLoading(false)
     }
@@ -103,12 +112,14 @@ export default function VehicleManagement() {
     try {
       const res = await fetch('/api/vehicles?limit=200')
       const data: VehicleListResponse = await res.json()
-      const b = [...new Set(data.vehicles.map((v) => v.branch).filter(Boolean))].sort()
-      const t = [...new Set(data.vehicles.map((v) => v.type).filter(Boolean))].sort()
-      setBranches(b)
-      setTypes(t)
+      if (data.vehicles && Array.isArray(data.vehicles)) {
+        const b = [...new Set(data.vehicles.map((v) => v.branch).filter(Boolean))].sort()
+        const t = [...new Set(data.vehicles.map((v) => v.type).filter(Boolean))].sort()
+        setBranches(b)
+        setTypes(t)
+      }
     } catch (err) {
-      console.error(err)
+      console.error('Error fetching filters:', err)
     }
   }, [])
 

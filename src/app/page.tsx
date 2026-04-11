@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   Car,
@@ -112,6 +112,43 @@ function SidebarContent({
 export default function Home() {
   const [activeSection, setActiveSection] = useState<Section>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
+  const [dbReady, setDbReady] = useState(false)
+  const [dbInitializing, setDbInitializing] = useState(true)
+  const [dbInitError, setDbInitError] = useState<string | null>(null)
+
+  // Initialize database schema on app mount
+  useEffect(() => {
+    const initializeDb = async () => {
+      try {
+        setDbInitializing(true)
+        setDbInitError(null)
+
+        const res = await fetch('/api/db-setup')
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(`HTTP ${res.status}: ${text}`)
+        }
+
+        const data = await res.json()
+        console.log('[DB Init] Database setup:', data.success ? 'SUCCESS' : 'FAILED', data.message)
+
+        if (data.success) {
+          setDbReady(true)
+          setDbInitError(null)
+        } else {
+          setDbReady(false)
+          setDbInitError(data.message || 'فشل الاتصال بخادم قاعدة البيانات')
+        }
+      } catch (err: any) {
+        console.error('[DB Init] Error:', err)
+        setDbReady(false)
+        setDbInitError(err?.message || 'حدث خطأ أثناء تهيئة قاعدة البيانات')
+      } finally {
+        setDbInitializing(false)
+      }
+    }
+    initializeDb()
+  }, [])
 
   const renderSection = () => {
     switch (activeSection) {
@@ -135,6 +172,63 @@ export default function Home() {
   }
 
   const currentNav = navItems.find((n) => n.id === activeSection)
+
+  // Show loading screen while database initializes
+  if (dbInitializing) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-500"></div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-slate-700">جاري تهيئة قاعدة البيانات</h2>
+            <p className="text-slate-500">يرجى الانتظار...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!dbReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-lg text-center">
+          <h2 className="text-xl font-semibold text-slate-700">فشل تهيئة قاعدة البيانات</h2>
+          <p className="mt-3 text-slate-500">{dbInitError || 'حدث خطأ أثناء تهيئة قاعدة البيانات. يرجى إعادة المحاولة.'}</p>
+          <button
+            onClick={() => {
+              setDbInitializing(true)
+              setDbReady(false)
+              setDbInitError(null)
+              fetch('/api/db-setup')
+                .then(async (res) => {
+                  if (!res.ok) {
+                    const text = await res.text()
+                    throw new Error(`HTTP ${res.status}: ${text}`)
+                  }
+                  return res.json()
+                })
+                .then((data) => {
+                  if (data.success) {
+                    setDbReady(true)
+                  } else {
+                    setDbInitError(data.message || 'فشل الاتصال بخادم قاعدة البيانات')
+                  }
+                })
+                .catch((err: any) => {
+                  setDbInitError(err?.message || 'حدث خطأ أثناء تهيئة قاعدة البيانات')
+                })
+                .finally(() => setDbInitializing(false))
+            }}
+            className="mt-6 inline-flex items-center justify-center rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">

@@ -59,9 +59,21 @@ interface FuelData {
   }[]
 }
 
+const defaultFuelData: FuelData = {
+  transactions: [],
+  total: 0,
+  page: 1,
+  totalPages: 1,
+  totalPurchases: 0,
+  totalPayments: 0,
+  balance: 0,
+  spendingPerVehicle: [],
+}
+
 export default function FuelMonitoring() {
-  const [data, setData] = useState<FuelData | null>(null)
+  const [data, setData] = useState<FuelData>(defaultFuelData)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [vehicleFilter, setVehicleFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -71,6 +83,7 @@ export default function FuelMonitoring() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (vehicleFilter) params.set('vehicleId', vehicleFilter)
     if (typeFilter) params.set('type', typeFilter)
@@ -80,9 +93,35 @@ export default function FuelMonitoring() {
     try {
       const res = await fetch(`/api/fuel-transactions?${params}`)
       const json = await res.json()
-      setData(json)
-    } catch (err) {
+
+      if (!res.ok) {
+        throw new Error(json?.error || `HTTP ${res.status}`)
+      }
+
+      if (typeof json !== 'object' || Array.isArray(json)) {
+        throw new Error('Invalid fuel transactions response')
+      }
+
+      setData({
+        transactions: Array.isArray(json.transactions) ? json.transactions : [],
+        total: Number(json.total ?? 0),
+        page: Number(json.page ?? 1),
+        totalPages: Number(json.totalPages ?? 1),
+        totalPurchases: Number(json.totalPurchases ?? 0),
+        totalPayments: Number(json.totalPayments ?? 0),
+        balance: Number(json.balance ?? 0),
+        spendingPerVehicle: Array.isArray(json.spendingPerVehicle)
+          ? json.spendingPerVehicle.map((item: any) => ({
+              vehicleId: item.vehicleId,
+              vehicle: item.vehicle ?? null,
+              amount: Number(item.amount ?? 0),
+            }))
+          : [],
+      })
+    } catch (err: any) {
       console.error(err)
+      setError(err?.message || 'خطأ في تحميل بيانات الوقود')
+      setData(defaultFuelData)
     } finally {
       setLoading(false)
     }
@@ -100,7 +139,30 @@ export default function FuelMonitoring() {
 
   const hasFilters = vehicleFilter || typeFilter || startDate || endDate
 
-  if (!data) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" /></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64 px-4">
+        <div className="max-w-xl w-full rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-lg font-semibold text-slate-700">خطأ في تحميل بيانات الوقود</p>
+          <p className="mt-2 text-sm text-slate-500">{error}</p>
+          <button
+            onClick={fetchData}
+            className="mt-6 inline-flex items-center justify-center rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -112,7 +174,7 @@ export default function FuelMonitoring() {
               <div>
                 <p className="text-sm text-slate-500 font-medium">إجمالي المشتريات</p>
                 <p className="text-2xl font-bold text-slate-800 mt-1">
-                  {data.totalPurchases.toLocaleString('ar-SA')} ج.م
+                  {(data.totalPurchases ?? 0).toLocaleString('ar-SA')} ج.م
                 </p>
                 <p className="text-xs text-slate-400">جنيه مصري</p>
               </div>
@@ -129,7 +191,7 @@ export default function FuelMonitoring() {
               <div>
                 <p className="text-sm text-slate-500 font-medium">إجمالي المدفوعات</p>
                 <p className="text-2xl font-bold text-slate-800 mt-1">
-                  {data.totalPayments.toLocaleString('ar-SA')} ج.م
+                  {(data.totalPayments ?? 0).toLocaleString('ar-SA')} ج.م
                 </p>
                 <p className="text-xs text-slate-400">جنيه مصري</p>
               </div>
@@ -145,8 +207,8 @@ export default function FuelMonitoring() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-500 font-medium">الرصيد المتبقي</p>
-                <p className={`text-2xl font-bold mt-1 ${data.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {data.balance.toLocaleString('ar-SA')} ج.م
+                <p className={`text-2xl font-bold mt-1 ${(data.balance ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {(data.balance ?? 0).toLocaleString('ar-SA')} ج.م
                 </p>
                 <p className="text-xs text-slate-400">جنيه مصري</p>
               </div>
@@ -170,7 +232,7 @@ export default function FuelMonitoring() {
           <div className="h-[250px]" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={data.spendingPerVehicle.map((s) => ({
+                data={(data.spendingPerVehicle || []).map((s) => ({
                   name: s.vehicle ? `${s.vehicle.sn}` : 'غير معروف',
                   amount: Math.round(s.amount),
                   plate: s.vehicle?.licencePlate || '',
@@ -266,12 +328,12 @@ export default function FuelMonitoring() {
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto" />
                     </td>
                   </tr>
-                ) : data.transactions.length === 0 ? (
+                ) : (data.transactions || []).length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-10 text-slate-400">لا توجد معاملات</td>
                   </tr>
                 ) : (
-                  data.transactions.map((t) => (
+                  (data.transactions || []).map((t) => (
                     <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/80">
                       <td className="py-3 px-3 text-slate-500 text-xs whitespace-nowrap">
                         {new Date(t.transactionDate).toLocaleDateString('ar-SA')}

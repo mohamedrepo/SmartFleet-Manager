@@ -80,6 +80,7 @@ export default function ReportsSection() {
   // Fuel consumption report
   const [fuelData, setFuelData] = useState<FuelConsumptionItem[]>([])
   const [fuelLoading, setFuelLoading] = useState(true)
+  const [fuelError, setFuelError] = useState<string | null>(null)
 
   // Distance deviation report
   const [deviationData, setDeviationData] = useState<DeviationItem[]>([])
@@ -106,12 +107,24 @@ export default function ReportsSection() {
 
   const fetchFuelData = useCallback(async () => {
     setFuelLoading(true)
+    setFuelError(null)
     try {
       const res = await fetch('/api/reports/fuel-consumption')
       const data = await res.json()
-      setFuelData(data || [])
-    } catch (err) {
+
+      if (!res.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`)
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid fuel report response')
+      }
+
+      setFuelData(data)
+    } catch (err: any) {
       console.error(err)
+      setFuelError(err?.message || 'خطأ في تحميل تقرير الوقود')
+      setFuelData([])
     } finally {
       setFuelLoading(false)
     }
@@ -154,11 +167,13 @@ export default function ReportsSection() {
   useEffect(() => { fetchMaintCostData() }, [fetchMaintCostData])
 
   // Chart data
-  const topFuelConsumers = fuelData.slice(0, 10).map((v) => ({
-    name: `#${v.sn}`,
-    cost: v.totalFuelCost,
-    kmPerLiter: v.kmPerLiter,
-  }))
+  const topFuelConsumers = Array.isArray(fuelData)
+    ? fuelData.slice(0, 10).map((v) => ({
+        name: `#${v.sn}`,
+        cost: v.totalFuelCost,
+        kmPerLiter: v.kmPerLiter,
+      }))
+    : []
 
   const topMaintSpenders = maintCostData.slice(0, 10).map((v) => ({
     name: v.vehicle ? `#${v.vehicle.sn}` : 'غير معروف',

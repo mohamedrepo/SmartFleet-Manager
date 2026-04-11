@@ -3,6 +3,7 @@
         "npx prisma": true,
         "npm install": true,
         "git commit": true,
-        "git push": true
+        "git push": true,
+        "npx tsc": true
     }
 }

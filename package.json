@@ -25,7 +25,9 @@
       "output": "dist-electron"
     },
     "files": [
-      "electron/**/*"
+      "electron/**/*",
+      "node_modules/.prisma/**/*",
+      "node_modules/@prisma/**/*"
     ],
     "extraResources": [
       {
@@ -34,18 +36,24 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "node_modules/.prisma",
+        "to": "app/node_modules/.prisma",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
-          "target": "dir",
+          "target": "nsis",
           "arch": [
             "x64"
           ]
         }
       ],
-      "sign": null,
       "icon": "public/favicon.ico"
     },
     "nsis": {

@@ -16,6 +16,10 @@ const os = require('os');
 const PORT = 3456;
 let mainWindow = null;
 let serverProcess = null;
+let serverStartError = null;
+let serverExitCode = null;
+let serverExitSignal = null;
+let serverStderrLog = [];
 let isQuitting = false;
 
 // ===== PREVENT MULTIPLE INSTANCES =====
@@ -135,6 +139,8 @@ function findPrismaEngines(serverCwd) {
     path.join(serverCwd, '.next', 'standalone', 'node_modules', '.prisma', 'client'),
     path.join(path.dirname(app.getPath('exe')), 'resources', 'app', 'node_modules', '.prisma', 'client'),
     path.join(path.dirname(app.getPath('exe')), 'resources', 'app', '.next', 'standalone', 'node_modules', '.prisma', 'client'),
+    path.join(path.dirname(app.getPath('exe')), 'resources', 'app.asar.unpacked', 'node_modules', '.prisma', 'client'),
+    path.join(path.dirname(app.getPath('exe')), 'resources', 'app.asar.unpacked', '.next', 'standalone', 'node_modules', '.prisma', 'client'),
   ];
 
   for (const p of strategies) {
@@ -207,22 +213,43 @@ function killPortProcess(port) {
 function waitForServer(port, maxRetries = 60) {
   return new Promise((resolve, reject) => {
     let retries = 0;
+    const getServerErrorDetails = () => {
+      if (serverStartError) {
+        return `Server process error: ${serverStartError.message}`;
+      }
+      if (serverExitCode !== null) {
+        const stderr = serverStderrLog.length ? `\nLast server stderr:\n${serverStderrLog.join('\n')}` : '';
+        return `Server process exited prematurely with code ${serverExitCode}` +
+          (serverExitSignal ? ` signal ${serverExitSignal}` : '') + stderr;
+      }
+      return null;
+    };
+
     const tryConnect = () => {
+      const serverErrorDetails = getServerErrorDetails();
+      if (serverErrorDetails) {
+        return reject(new Error(serverErrorDetails));
+      }
+
       const req = http.get(`http://127.0.0.1:${port}/api/db-setup`, (res) => {
         res.resume();
         resolve(true);
       });
+
       req.on('error', () => {
         if (++retries >= maxRetries) {
-          reject(new Error(`Server did not respond after ${maxRetries} seconds`));
+          const stderr = serverStderrLog.length ? `\nLast server stderr:\n${serverStderrLog.join('\n')}` : '';
+          reject(new Error(`Server did not respond after ${maxRetries} seconds${stderr}`));
         } else {
           setTimeout(tryConnect, 1000);
         }
       });
+
       req.setTimeout(5000, () => {
         req.destroy();
         if (++retries >= maxRetries) {
-          reject(new Error(`Server connection timed out after ${maxRetries} seconds`));
+          const stderr = serverStderrLog.length ? `\nLast server stderr:\n${serverStderrLog.join('\n')}` : '';
+          reject(new Error(`Server connection timed out after ${maxRetries} seconds${stderr}`));
         } else {
           setTimeout(tryConnect, 1000);
         }
@@ -271,6 +298,11 @@ function callDbSetup() {
 }
 
 function startServer(serverPath, serverCwd, prismaEnginesPath) {
+  serverStartError = null;
+  serverExitCode = null;
+  serverExitSignal = null;
+  serverStderrLog = [];
+
   // Set Prisma engine path if found
   if (prismaEnginesPath) {
     process.env.PRISMA_ENGINES_PATH = prismaEnginesPath;
@@ -282,7 +314,7 @@ function startServer(serverPath, serverCwd, prismaEnginesPath) {
     }
   }
 
-  const nodeModulesPath = path.join(serverCwd, 'node_modules');
+  const nodeModulesPath = path.join(serverCwd, '.next', 'standalone', 'node_modules');
 
   const env = {
     ...process.env,
@@ -321,17 +353,24 @@ function startServer(serverPath, serverCwd, prismaEnginesPath) {
   serverProcess.stderr.on('data', (data) => {
     const str = data.toString();
     for (const line of str.split('\n')) {
-      if (line.trim()) console.error('[Server:ERR]', line.trim());
+      if (line.trim()) {
+        console.error('[Server:ERR]', line.trim());
+        serverStderrLog.push(line.trim());
+        if (serverStderrLog.length > 50) serverStderrLog.shift();
+      }
     }
   });
 
   serverProcess.on('exit', (code, signal) => {
+    serverExitCode = code;
+    serverExitSignal = signal;
     console.log('[SmartFleet] Server process exited. Code:', code, 'Signal:', signal);
     serverProcess = null;
     // Don't restart - if server dies, just keep the window open showing the error
   });
 
   serverProcess.on('error', (err) => {
+    serverStartError = err;
     console.error('[SmartFleet] Server process error:', err.message);
     serverProcess = null;
   });

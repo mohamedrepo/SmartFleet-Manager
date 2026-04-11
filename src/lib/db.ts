@@ -17,9 +17,11 @@ function createPrismaClient() {
   return new PrismaClient(options);
 }
 
-export const db =
-  globalForPrisma.prisma ??
-  createPrismaClient();
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = createPrismaClient();
+}
+
+export const db = globalForPrisma.prisma;
 
 if (process.env.NODE_ENV === 'production') {
   console.log('[DB] PrismaClient initialized');

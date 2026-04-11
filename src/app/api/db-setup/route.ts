@@ -1,20 +1,38 @@
 import { NextResponse } from 'next/server';
 import { existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 
 export const dynamic = 'force-dynamic';
+
+function getSqlitePath(dbUrl: string) {
+  if (!dbUrl) return '';
+  let filePath = dbUrl;
+
+  if (filePath.startsWith('file:///')) {
+    filePath = filePath.replace('file:///', '');
+  } else if (filePath.startsWith('file://')) {
+    filePath = filePath.replace('file://', '');
+  } else if (filePath.startsWith('file:')) {
+    filePath = filePath.replace('file:', '');
+  }
+
+  if (/^\/[A-Za-z]:\//.test(filePath)) {
+    filePath = filePath.slice(1);
+  }
+
+  return resolve(filePath);
+}
 
 export async function GET() {
   try {
     console.log('[DB Setup] Starting database setup...');
 
     const dbUrl = process.env.DATABASE_URL || '';
-    console.log('[DB Setup] DATABASE_URL:', dbUrl.substring(0, 50) + '...');
+    console.log('[DB Setup] DATABASE_URL:', dbUrl);
 
-    // Ensure database directory exists
-    if (dbUrl.startsWith('file:///')) {
-      const filePath = dbUrl.replace('file:///', '');
-      const dbDir = dirname(filePath);
+    const sqlitePath = getSqlitePath(dbUrl);
+    if (sqlitePath) {
+      const dbDir = dirname(sqlitePath);
       console.log('[DB Setup] Ensuring DB directory exists:', dbDir);
 
       try {
@@ -32,17 +50,42 @@ export async function GET() {
     // Create tables using raw SQL if they don't exist
     // This replaces the broken "npx prisma db push" approach
     // which doesn't work on end-user machines (no npx installed)
+    let db: any = null;
     try {
-      const { db } = await import('@/lib/db');
-      
-      // Try a simple query first - if tables exist, we're done
+      if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is not set')
+      }
+
+      const { PrismaClient } = await import('@prisma/client')
+      db = new PrismaClient({
+        log: ['error', 'warn'],
+        datasourceUrl: process.env.DATABASE_URL,
+      })
+
+      await db.$connect()
+
+      const requiredTables = ['Vehicle', 'WorkOrder', 'FuelTransaction', 'MaintenanceRecord', 'Tire', 'SparePart']
+      // Verify that all required tables exist before skipping schema creation
       let tablesExist = false;
       try {
-        await db.$queryRawUnsafe("SELECT name FROM sqlite_master WHERE type='table' AND name='Vehicle'");
-        tablesExist = true;
-        console.log('[DB Setup] Tables already exist');
+        const quotedNames = requiredTables.map((name) => `'${name}'`).join(', ')
+        const result = await db.$queryRawUnsafe(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${quotedNames})`
+        )
+
+        const existingTables = Array.isArray(result)
+          ? result.map((row: any) => row.name)
+          : []
+
+        tablesExist = requiredTables.every((name) => existingTables.includes(name))
+        if (tablesExist) {
+          console.log('[DB Setup] All required tables already exist')
+        } else {
+          console.log('[DB Setup] Missing tables:', requiredTables.filter((name) => !existingTables.includes(name)).join(', '))
+          console.log('[DB Setup] Creating missing schema...')
+        }
       } catch (e) {
-        console.log('[DB Setup] Tables do not exist, creating schema...');
+        console.log('[DB Setup] Tables do not exist, creating schema...', e)
       }
 
       if (!tablesExist) {
@@ -159,9 +202,20 @@ export async function GET() {
 
         await db.$executeRawUnsafe(schemaSQL);
         console.log('[DB Setup] Schema created successfully via raw SQL');
+
+        const verifyResult = await db.$queryRawUnsafe(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${requiredTables.map((name) => `'${name}'`).join(', ')})`
+        )
+        const verifiedTables = Array.isArray(verifyResult)
+          ? verifyResult.map((row: any) => row.name)
+          : []
+        const missingAfterCreate = requiredTables.filter((name) => !verifiedTables.includes(name))
+        if (missingAfterCreate.length) {
+          throw new Error(`Failed to create tables: ${missingAfterCreate.join(', ')}`)
+        }
       }
 
-      // Verify
+      // Verify core vehicle table too
       const count = await db.vehicle.count();
       console.log('[DB Setup] Verified! Vehicle count:', count);
 
@@ -169,6 +223,14 @@ export async function GET() {
     } catch (verifyErr: any) {
       console.error('[DB Setup] Prisma error:', verifyErr.message);
       return NextResponse.json({ success: false, message: verifyErr.message });
+    } finally {
+      if (db) {
+        try {
+          await db.$disconnect()
+        } catch (disconnectErr: any) {
+          console.error('[DB Setup] Error disconnecting Prisma:', disconnectErr.message)
+        }
+      }
     }
   } catch (error: any) {
     console.error('[DB Setup] FAILED:', error.message);

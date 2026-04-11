@@ -66,11 +66,31 @@ export default function DashboardSection() {
     fetch('/api/dashboard')
       .then((res) => res.json())
       .then((d) => {
-        setData(d)
+        // Ensure all required arrays exist with defaults
+        const safeData = {
+          ...d,
+          fuelByBranch: d.fuelByBranch || [],
+          vehicleTypeData: d.vehicleTypeData || [],
+          monthlyTrend: d.monthlyTrend || [],
+          recentWorkOrders: d.recentWorkOrders || [],
+          monthNames: d.monthNames || ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+        }
+        setData(safeData)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((err) => {
+        console.error('Dashboard fetch error:', err)
+        setLoading(false)
+      })
   }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+      </div>
+    )
+  }
 
   if (loading) {
     return (
