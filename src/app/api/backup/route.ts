@@ -44,10 +44,10 @@ export async function PUT() {
     return NextResponse.json({
       backups,
       stats: {
-        vehicles: vehicleCount,
-        workOrders: workOrderCount,
-        fuelTransactions: fuelTxCount,
-        maintenanceRecords: maintenanceCount,
+        vehicles: Number(vehicleCount),
+        workOrders: Number(workOrderCount),
+        fuelTransactions: Number(fuelTxCount),
+        maintenanceRecords: Number(maintenanceCount),
       },
     });
   } catch (error) {

@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       parts,
-      total,
+      total: Number(total),
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(Number(total) / limit),
     });
   } catch (error) {
     console.error('Spare parts error:', error);

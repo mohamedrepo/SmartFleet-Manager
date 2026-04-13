@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { handleApiError, ApiError } from '@/lib/api-error';
+import { createMaintenanceRecordSchema } from '@/lib/validation-schemas';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -26,49 +28,41 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       records,
-      total,
+      total: Number(total),
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(Number(total) / limit),
     });
   } catch (error) {
-    console.error('Maintenance error:', error);
-    return NextResponse.json({ error: 'خطأ في تحميل سجلات الصيانة' }, { status: 500 });
+    return handleApiError(error, 'GET /api/maintenance', 'خطأ في تحميل سجلات الصيانة');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      vehicleId,
-      type,
-      description,
-      cost,
-      kmAtService,
-      nextServiceKm,
-      serviceDate,
-      provider,
-      notes,
-    } = body;
+    const validated = createMaintenanceRecordSchema.parse(body);
 
-    if (!vehicleId || !type || !description) {
-      return NextResponse.json(
-        { error: 'يرجى تعبئة الحقول المطلوبة' },
-        { status: 400 }
-      );
+    // Verify vehicle exists
+    const vehicle = await db.vehicle.findUnique({
+      where: { id: validated.vehicleId },
+      select: { id: true },
+    });
+
+    if (!vehicle) {
+      throw new ApiError(404, 'المركبة المحددة غير موجودة');
     }
 
     const record = await db.maintenanceRecord.create({
       data: {
-        vehicleId,
-        type,
-        description,
-        cost: parseFloat(cost) || 0,
-        kmAtService: parseFloat(kmAtService) || 0,
-        nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : null,
-        serviceDate: serviceDate ? new Date(serviceDate) : new Date(),
-        provider: provider || '',
-        notes: notes || '',
+        vehicleId: validated.vehicleId,
+        type: validated.type,
+        description: validated.description,
+        cost: validated.cost,
+        kmAtService: validated.kmAtService,
+        nextServiceKm: validated.nextServiceKm,
+        serviceDate: validated.serviceDate ? new Date(validated.serviceDate) : new Date(),
+        provider: validated.provider,
+        notes: validated.notes,
       },
       include: {
         vehicle: { select: { sn: true, model: true, licencePlate: true } },
@@ -77,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(record, { status: 201 });
   } catch (error) {
-    console.error('Create maintenance error:', error);
-    return NextResponse.json({ error: 'خطأ في إنشاء سجل الصيانة' }, { status: 500 });
+    return handleApiError(error, 'POST /api/maintenance', 'خطأ في إنشاء سجل الصيانة');
   }
 }

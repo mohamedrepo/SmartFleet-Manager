@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, resolve } from 'path';
+import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,28 +49,19 @@ export async function GET() {
     }
 
     // Create tables using raw SQL if they don't exist
-    // This replaces the broken "npx prisma db push" approach
-    // which doesn't work on end-user machines (no npx installed)
-    let db: any = null;
+    let dbConnection: any = null;
     try {
-      if (!process.env.DATABASE_URL) {
-        throw new Error('DATABASE_URL is not set')
-      }
+      console.log('[DB Setup] Using global database client...')
+      dbConnection = db
 
-      const { PrismaClient } = await import('@prisma/client')
-      db = new PrismaClient({
-        log: ['error', 'warn'],
-        datasourceUrl: process.env.DATABASE_URL,
-      })
-
-      await db.$connect()
+      console.log('[DB Setup] Database client ready')
 
       const requiredTables = ['Vehicle', 'WorkOrder', 'FuelTransaction', 'MaintenanceRecord', 'Tire', 'SparePart']
       // Verify that all required tables exist before skipping schema creation
       let tablesExist = false;
       try {
         const quotedNames = requiredTables.map((name) => `'${name}'`).join(', ')
-        const result = await db.$queryRawUnsafe(
+        const result = await dbConnection.$queryRawUnsafe(
           `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${quotedNames})`
         )
 
@@ -201,12 +193,12 @@ export async function GET() {
         ]
 
         for (const sql of tableSQLs) {
-          await db.$executeRawUnsafe(sql)
+          await dbConnection.$executeRawUnsafe(sql)
         }
         console.log('[DB Setup] All tables created successfully');
 
-        const verifyResult = await db.$queryRawUnsafe(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${requiredTables.map((name) => `'${name}'`).join(', ')})`
+        const verifyResult = await dbConnection.$queryRawUnsafe(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${['Vehicle', 'WorkOrder', 'FuelTransaction', 'MaintenanceRecord', 'Tire', 'SparePart'].map((name) => `'${name}'`).join(', ')})`
         )
         const verifiedTables = Array.isArray(verifyResult)
           ? verifyResult.map((row: any) => row.name)
@@ -218,21 +210,15 @@ export async function GET() {
       }
 
       // Verify core vehicle table too
-      const count = await db.vehicle.count();
+      console.log('[DB Setup] Querying vehicle count...')
+      const countResult = await dbConnection.$queryRawUnsafe('SELECT CAST(COUNT(*) as INTEGER) as count FROM "Vehicle"')
+      const count = Array.isArray(countResult) ? Number(countResult[0]?.count ?? 0) : 0;
       console.log('[DB Setup] Verified! Vehicle count:', count);
 
       return NextResponse.json({ success: true, message: 'Database ready', vehicleCount: count });
     } catch (verifyErr: any) {
       console.error('[DB Setup] Prisma error:', verifyErr.message);
       return NextResponse.json({ success: false, message: verifyErr.message });
-    } finally {
-      if (db) {
-        try {
-          await db.$disconnect()
-        } catch (disconnectErr: any) {
-          console.error('[DB Setup] Error disconnecting Prisma:', disconnectErr.message)
-        }
-      }
     }
   } catch (error: any) {
     console.error('[DB Setup] FAILED:', error.message);

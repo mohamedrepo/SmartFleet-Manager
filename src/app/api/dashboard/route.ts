@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const totalVehicles = await db.vehicle.count();
+    const totalVehicles = Number(await db.vehicle.count());
 
-    const openWorkOrders = await db.workOrder.count({
+    const openWorkOrders = Number(await db.workOrder.count({
       where: { status: { in: ['open', 'in_progress'] } },
-    });
+    }));
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -22,7 +22,7 @@ export async function GET() {
     });
 
     const totalFuelCost = fuelTransactionsThisMonth.reduce(
-      (sum, t) => sum + t.amount,
+      (sum, t) => sum + Number(t.amount),
       0
     );
 
@@ -57,7 +57,7 @@ export async function GET() {
 
     allFuelThisMonth.forEach((t) => {
       const branch = t.vehicle.branch || 'غير محدد';
-      branchFuelCost[branch] = (branchFuelCost[branch] || 0) + t.amount;
+      branchFuelCost[branch] = (branchFuelCost[branch] || 0) + Number(t.amount);
     });
 
     const fuelByBranch = Object.entries(branchFuelCost)
@@ -73,7 +73,7 @@ export async function GET() {
 
     const vehicleTypeData = vehiclesByType.map((v) => ({
       type: v.type,
-      count: v._count.id,
+      count: Number(v._count.id),
     }));
 
     // Monthly fuel spending trend (last 6 months)
@@ -98,7 +98,7 @@ export async function GET() {
     recentFuel.forEach((t) => {
       const key = `${t.transactionDate.getFullYear()}-${String(t.transactionDate.getMonth() + 1).padStart(2, '0')}`;
       if (monthlySpending[key] !== undefined) {
-        monthlySpending[key] += t.amount;
+        monthlySpending[key] += Number(t.amount);
       }
     });
 
@@ -121,7 +121,7 @@ export async function GET() {
     return NextResponse.json({
       totalVehicles,
       openWorkOrders,
-      totalFuelCost: Math.round(totalFuelCost),
+      totalFuelCost: Math.round(Number(totalFuelCost)),
       maintenanceAlerts: alertVehicles.length,
       fuelByBranch,
       vehicleTypeData,

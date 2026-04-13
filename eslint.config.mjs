@@ -8,39 +8,39 @@ const __dirname = dirname(__filename);
 
 const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
   rules: {
-    // TypeScript rules
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off",
-    "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/prefer-as-const": "off",
+    // TypeScript rules - ENABLED for code quality
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/prefer-as-const": "warn",
     "@typescript-eslint/no-unused-disable-directive": "off",
     
-    // React rules
-    "react-hooks/exhaustive-deps": "off",
-    "react-hooks/purity": "off",
-    "react/no-unescaped-entities": "off",
+    // React rules - ENABLED for common mistakes
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/purity": "warn",
+    "react/no-unescaped-entities": "warn",
     "react/display-name": "off",
     "react/prop-types": "off",
     "react-compiler/react-compiler": "off",
     
     // Next.js rules
-    "@next/next/no-img-element": "off",
+    "@next/next/no-img-element": "warn",
     "@next/next/no-html-link-for-pages": "off",
     
     // General JavaScript rules
-    "prefer-const": "off",
-    "no-unused-vars": "off",
-    "no-console": "off",
-    "no-debugger": "off",
+    "prefer-const": "warn",
+    "no-unused-vars": "off", // Handled by @typescript-eslint
+    "no-console": ["warn", { allow: ["warn", "error"] }],
+    "no-debugger": "warn",
     "no-empty": "off",
-    "no-irregular-whitespace": "off",
-    "no-case-declarations": "off",
-    "no-fallthrough": "off",
+    "no-irregular-whitespace": "warn",
+    "no-case-declarations": "warn",
+    "no-fallthrough": "warn",
     "no-mixed-spaces-and-tabs": "off",
-    "no-redeclare": "off",
+    "no-redeclare": "warn",
     "no-undef": "off",
-    "no-unreachable": "off",
+    "no-unreachable": "warn",
     "no-useless-escape": "off",
   },
 }, {

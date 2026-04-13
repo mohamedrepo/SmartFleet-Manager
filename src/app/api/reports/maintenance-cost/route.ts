@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     const report = maintenanceCostByVehicle.map((r) => ({
       vehicleId: r.vehicleId,
       vehicle: vehicleMap.get(r.vehicleId),
-      totalCost: r._sum.cost || 0,
-      recordCount: r._count.id,
+      totalCost: Number(r._sum.cost || 0),
+      recordCount: Number(r._count.id),
     }));
 
     // Cost by type
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
 
     const typeReport = costByType.map((t) => ({
       type: t.type,
-      totalCost: t._sum.cost || 0,
-      recordCount: t._count.id,
+      totalCost: Number(t._sum.cost || 0),
+      recordCount: Number(t._count.id),
     }));
 
     const totalCost = report.reduce((s, r) => s + r.totalCost, 0);
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
         typeLabel: maintenanceTypes[t.type] || t.type,
       })),
       summary: {
-        totalCost: Math.round(totalCost),
+        totalCost: Math.round(Number(totalCost)),
         vehicleCount: report.length,
-        totalRecords: report.reduce((s, r) => s + r.recordCount, 0),
+        totalRecords: Number(report.reduce((s, r) => s + r.recordCount, 0)),
       },
     });
   } catch (error) {

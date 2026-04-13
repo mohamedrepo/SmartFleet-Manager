@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { handleApiError } from '@/lib/api-error';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -70,21 +71,20 @@ export async function GET(request: NextRequest) {
     const spendingPerVehicle = spendingByVehicle.map((s) => ({
       vehicleId: s.vehicleId,
       vehicle: vehicleMap.get(s.vehicleId),
-      amount: s._sum.amount || 0,
+      amount: Number(s._sum.amount || 0),
     }));
 
     return NextResponse.json({
       transactions,
-      total,
+      total: Number(total),
       page,
-      totalPages: Math.ceil(total / limit),
-      totalPurchases: Math.round(totalPurchases),
-      totalPayments: Math.round(totalPayments),
-      balance: Math.round(balance),
+      totalPages: Math.ceil(Number(total) / limit),
+      totalPurchases: Math.round(Number(totalPurchases)),
+      totalPayments: Math.round(Number(totalPayments)),
+      balance: Math.round(Number(balance)),
       spendingPerVehicle,
     });
   } catch (error) {
-    console.error('Fuel transactions error:', error);
-    return NextResponse.json({ error: 'خطأ في تحميل بيانات الوقود' }, { status: 500 });
+    return handleApiError(error, 'GET /api/fuel-transactions', 'خطأ في تحميل بيانات الوقود');
   }
 }

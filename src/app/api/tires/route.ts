@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { handleApiError, ApiError } from '@/lib/api-error';
+import { createTireSchema } from '@/lib/validation-schemas';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -26,13 +28,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       tires,
-      total,
+      total: Number(total),
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(Number(total) / limit),
     });
   } catch (error) {
-    console.error('Tires error:', error);
-    return NextResponse.json({ error: 'خطأ في تحميل بيانات الإطارات' }, { status: 500 });
+    return handleApiError(error, 'GET /api/tires', 'خطأ في تحميل بيانات الإطارات');
   }
 }
 
@@ -40,35 +41,29 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      vehicleId,
-      position,
-      brand,
-      size,
-      installKm,
-      currentKm,
-      maxKm,
-      status,
-      installDate,
-    } = body;
+      vehivalidated = createTireSchema.parse(body);
 
-    if (!vehicleId || !position) {
-      return NextResponse.json(
-        { error: 'يرجى تعبئة الحقول المطلوبة' },
-        { status: 400 }
-      );
+    // Verify vehicle exists
+    const vehicle = await db.vehicle.findUnique({
+      where: { id: validated.vehicleId },
+      select: { id: true },
+    });
+
+    if (!vehicle) {
+      throw new ApiError(404, 'المركبة المحددة غير موجودة');
     }
 
     const tire = await db.tire.create({
       data: {
-        vehicleId,
-        position,
-        brand: brand || '',
-        size: size || '',
-        installKm: parseFloat(installKm) || 0,
-        currentKm: parseFloat(currentKm) || parseFloat(installKm) || 0,
-        maxKm: maxKm ? parseFloat(maxKm) : null,
-        status: status || 'active',
-        installDate: installDate ? new Date(installDate) : new Date(),
+        vehicleId: validated.vehicleId,
+        position: validated.position,
+        brand: validated.brand,
+        size: validated.size,
+        installKm: validated.installKm,
+        currentKm: validated.currentKm,
+        maxKm: validated.maxKm,
+        status: validated.status,
+        installDate: new Date(),
       },
       include: {
         vehicle: { select: { sn: true, model: true, licencePlate: true } },
@@ -77,7 +72,5 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(tire, { status: 201 });
   } catch (error) {
-    console.error('Create tire error:', error);
-    return NextResponse.json({ error: 'خطأ في إضافة الإطار' }, { status: 500 });
-  }
+    return handleApiError(error, 'POST /api/tires', 'خطأ في إضافة الإطار'
 }

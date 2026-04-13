@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Truck,
   Database,
+  MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,8 +26,9 @@ import FuelMonitoring from '@/components/fleet/fuel-monitoring'
 import MaintenanceSection from '@/components/fleet/maintenance'
 import ReportsSection from '@/components/fleet/reports'
 import BackupRestore from '@/components/fleet/backup'
+import BranchMap from '@/components/fleet/branch-map'
 
-type Section = 'dashboard' | 'vehicles' | 'work-orders' | 'fuel' | 'maintenance' | 'reports' | 'backup'
+type Section = 'dashboard' | 'vehicles' | 'work-orders' | 'fuel' | 'maintenance' | 'reports' | 'backup' | 'map'
 
 interface NavItem {
   id: Section
@@ -41,6 +43,7 @@ const navItems: NavItem[] = [
   { id: 'fuel', label: 'مراقبة الوقود', icon: Fuel },
   { id: 'maintenance', label: 'الصيانة', icon: Wrench },
   { id: 'reports', label: 'التقارير', icon: BarChart3 },
+  { id: 'map', label: 'خريطة الفروع', icon: MapPin },
   { id: 'backup', label: 'النسخ الاحتياطي', icon: Database },
 ]
 
@@ -164,6 +167,8 @@ export default function Home() {
         return <MaintenanceSection />
       case 'reports':
         return <ReportsSection />
+      case 'map':
+        return <BranchMap />
       case 'backup':
         return <BackupRestore />
       default:

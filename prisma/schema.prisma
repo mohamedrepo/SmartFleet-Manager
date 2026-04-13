@@ -35,6 +35,10 @@ model Vehicle {
   maintenanceRecords MaintenanceRecord[]
   tires          Tire[]
   spareParts     SparePart[]
+
+  @@index([branch])
+  @@index([type])
+  @@index([fuel])
 }
 
 model WorkOrder {
@@ -62,6 +66,10 @@ model WorkOrder {
   updatedAt      DateTime @updatedAt
 
   vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model FuelTransaction {
@@ -73,6 +81,10 @@ model FuelTransaction {
   transactionDate DateTime
   description     String
   amount          Float
+
+  @@index([vehicleId])
+  @@index([type])
+  @@index([transactionDate])
   type            String   // D = Debit/Purchase, C = Credit/Payment
   createdAt       DateTime @default(now())
 
@@ -90,6 +102,9 @@ model MaintenanceRecord {
   serviceDate    DateTime @default(now())
   provider       String?
   notes          String?
+
+  @@index([vehicleId])
+  @@index([serviceDate])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -104,6 +119,9 @@ model Tire {
   size           String?
   installDate    DateTime @default(now())
   installKm      Float
+
+  @@index([vehicleId])
+  @@index([status])
   currentKm      Float
   maxKm          Float?
   status         String   @default("active") // active, rotated, replaced
@@ -123,10 +141,24 @@ model SparePart {
   supplier       String?
   installDate    DateTime @default(now())
   installKm      Float?
+
+  @@index([vehicleId])
   expectedLife   String?
   notes          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   vehicle        Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Branch {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  latitude       Float
+  longitude      Float
+  address        String?
+  phoneNumber    String?
+  managerName    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

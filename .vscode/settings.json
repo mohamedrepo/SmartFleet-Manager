@@ -4,6 +4,7 @@
         "npm install": true,
         "git commit": true,
         "git push": true,
-        "npx tsc": true
+        "npx tsc": true,
+        "netstat": true
     }
 }

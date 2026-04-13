@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { handleApiError } from '@/lib/api-error';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -37,12 +38,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       vehicles,
-      total,
+      total: Number(total),
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(Number(total) / limit),
     });
   } catch (error) {
-    console.error('Vehicles error:', error);
-    return NextResponse.json({ error: 'خطأ في تحميل المركبات' }, { status: 500 });
+    return handleApiError(error, 'GET /api/vehicles', 'خطأ في تحميل المركبات');
   }
 }
