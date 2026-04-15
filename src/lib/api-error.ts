@@ -21,14 +21,15 @@ export function handleApiError(
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {
-    const fieldErrors = error.errors.reduce(
-      (acc, err) => {
-        const path = err.path.join('.');
-        acc[path] = err.message;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
+    const issues = (error as unknown as { issues?: unknown[] })?.issues || [];
+    const fieldErrors: Record<string, string> = {};
+    
+    for (const issue of issues) {
+      if (issue && typeof issue === 'object' && 'path' in issue && 'message' in issue) {
+        const path = (issue.path as (string | number)[]).join('.');
+        fieldErrors[path] = String(issue.message);
+      }
+    }
 
     console.warn(
       `[${requestId}][${context}] Validation error:`,

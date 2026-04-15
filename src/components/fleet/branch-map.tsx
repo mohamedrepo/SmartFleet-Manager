@@ -42,7 +42,16 @@ const Popup = dynamic(
 const HeatmapLayer = dynamic(
   () => import('react-leaflet-heatmap-layer-v3').then((mod) => mod.HeatmapLayer),
   { ssr: false }
-)
+) as React.ComponentType<{
+  points: number[][]
+  longitudeExtractor: (p: number[]) => number
+  latitudeExtractor: (p: number[]) => number
+  intensityExtractor: (p: number[]) => number
+  radius: number
+  blur: number
+  max: number
+  gradient: Record<number, string>
+}>
 
 export default function BranchMap() {
   const [branches, setBranches] = useState<BranchData[]>([])
