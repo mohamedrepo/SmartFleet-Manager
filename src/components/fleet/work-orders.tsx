@@ -54,6 +54,7 @@ interface WorkOrder {
   departureKm: number
   stops: string
   estimatedDistance: number
+  estimatedFuel: number
   estimatedTime: string
   estimatedArrival: string
   returnKm: number | null
@@ -72,6 +73,7 @@ interface Vehicle {
   model: string
   licencePlate: string
   kmReading: number
+  fuelRate: number
   branch: string
 }
 
@@ -269,6 +271,7 @@ export default function WorkOrders() {
   const [formDepartureKm, setFormDepartureKm] = useState('')
   const [formStops, setFormStops] = useState<StopPoint[]>([{ name: '', lat: 0, lon: 0, displayName: '' }])
   const [formEstimatedDistance, setFormEstimatedDistance] = useState('')
+  const [formEstimatedFuel, setFormEstimatedFuel] = useState('')
   const [formEstimatedTime, setFormEstimatedTime] = useState('')
   const [formEstimatedArrival, setFormEstimatedArrival] = useState('')
   const [formNotes, setFormNotes] = useState('')
@@ -363,8 +366,14 @@ export default function WorkOrders() {
 
       const data = await res.json()
       setRouteResult(data)
-      // Store the TOTAL (round-trip) distance as estimatedDistance
-      setFormEstimatedDistance(String(data.totalDistance))
+      const totalDistance = data.totalDistance || 0
+      setFormEstimatedDistance(String(totalDistance))
+      
+      // Calculate estimated fuel consumption: distance / vehicle fuel rate
+      const fuelRate = selectedVehicle?.fuelRate || 0
+      const estimatedFuel = fuelRate > 0 ? Math.round((totalDistance / fuelRate) * 100) / 100 : 0
+      setFormEstimatedFuel(String(estimatedFuel))
+      
       setFormEstimatedTime(data.totalTime)
       setFormEstimatedArrival(data.totalArrival)
     } catch {
@@ -435,6 +444,7 @@ export default function WorkOrders() {
           departureKm: formDepartureKm,
           stops: stopsData,
           estimatedDistance: formEstimatedDistance,
+          estimatedFuel: formEstimatedFuel,
           estimatedTime: formEstimatedTime,
           estimatedArrival: formEstimatedArrival,
           status: 'open',
@@ -602,6 +612,9 @@ export default function WorkOrders() {
                         <td className="py-3 px-3 text-slate-600">
                           <div className="flex flex-col">
                             <span>{wo.estimatedDistance ? `${wo.estimatedDistance} كم` : '-'}</span>
+                            {wo.estimatedFuel > 0 && (
+                              <span className="text-xs text-amber-600">وقود: {wo.estimatedFuel} لتر</span>
+                            )}
                             {wo.actualDistance ? (
                               <span className={`text-xs ${wo.distanceDeviation && wo.distanceDeviation > 20 ? 'text-red-500 font-medium' : 'text-emerald-600'}`}>
                                 فعلي: {wo.actualDistance} كم

@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      vehivalidated = createTireSchema.parse(body);
+    const validated = createTireSchema.parse(body);
 
     // Verify vehicle exists
     const vehicle = await db.vehicle.findUnique({
@@ -72,5 +71,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(tire, { status: 201 });
   } catch (error) {
-    return handleApiError(error, 'POST /api/tires', 'خطأ في إضافة الإطار'
+    return handleApiError(error, 'POST /api/tires', 'خطأ في إضافة الإطار');
+  }
 }

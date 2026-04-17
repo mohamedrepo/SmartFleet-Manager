@@ -117,6 +117,7 @@ export async function GET() {
             "departureKm" REAL NOT NULL DEFAULT 0,
             "stops" TEXT NOT NULL DEFAULT '[]',
             "estimatedDistance" REAL NOT NULL DEFAULT 0,
+            "estimatedFuel" REAL NOT NULL DEFAULT 0,
             "estimatedTime" TEXT NOT NULL DEFAULT '',
             "estimatedArrival" TEXT NOT NULL DEFAULT '',
             "returnKm" REAL,

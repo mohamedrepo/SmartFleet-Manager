@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         departureKm: validated.departureKm,
         stops: validated.stops,
         estimatedDistance: validated.estimatedDistance,
+        estimatedFuel: validated.estimatedFuel || 0,
         estimatedTime: validated.estimatedTime,
         estimatedArrival: validated.estimatedArrival,
         status: validated.status,

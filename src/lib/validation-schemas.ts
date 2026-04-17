@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Common schemas
-const cuidSchema = z.string().cuid('Invalid ID format');
+const cuidSchema = z.string().min(1, 'Invalid ID format');
 const positiveNumber = z.number().positive('Must be greater than 0');
 const nonNegativeNumber = z.number().nonnegative('Cannot be negative');
 
@@ -26,17 +26,18 @@ export const createVehicleSchema = z.object({
 
 // Work Order schemas
 export const createWorkOrderSchema = z.object({
-  vehicleId: cuidSchema,
+  vehicleId: z.string().min(1),
   driverName: z.string().min(2).max(100),
   distributor: z.string().max(100).optional().default(''),
   departureBranch: z.string().optional().default(''),
   destinationBranch: z.string().optional().default(''),
   branch: z.string().optional().default(''),
-  departureKm: z.number().nonnegative(),
+  departureKm: z.coerce.number().nonnegative().default(0),
   stops: z.union([z.string(), z.array(z.unknown())]).transform((val) =>
-    typeof val === 'string' ? val : JSON.stringify(val)
-  ),
-  estimatedDistance: z.number().nonnegative(),
+    typeof val === 'string' ? val : JSON.stringify(val ?? [])
+  ).default('[]'),
+  estimatedDistance: z.coerce.number().nonnegative().default(0),
+  estimatedFuel: z.coerce.number().nonnegative().default(0),
   estimatedTime: z.string().optional().default(''),
   estimatedArrival: z.string().optional().default(''),
   status: z.enum(['open', 'in_progress', 'closed']).optional().default('open'),
@@ -104,16 +105,16 @@ export const createSparePartSchema = z.object({
 // Query parameter schemas
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const searchParamsSchema = z.object({
-  search: z.string().max(200).optional(),
-  branch: z.string().optional(),
-  status: z.string().optional(),
-  type: z.string().optional(),
-  fuel: z.string().optional(),
+  search: z.coerce.string().max(200).optional(),
+  branch: z.coerce.string().optional(),
+  status: z.coerce.string().optional(),
+  type: z.coerce.string().optional(),
+  fuel: z.coerce.string().optional(),
 });
 
 // Combine pagination with search
-export const listQuerySchema = paginationSchema.merge(searchParamsSchema);
+export const listQuerySchema = paginationSchema.merge(searchParamsSchema).passthrough();

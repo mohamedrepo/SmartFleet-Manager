@@ -53,6 +53,7 @@ model WorkOrder {
   departureKm      Float
   stops            String   // JSON array of stop points: [{name, lat, lon}]
   estimatedDistance  Float
+  estimatedFuel   Float    @default(0)  // Estimated fuel consumption in liters
   estimatedTime    String
   estimatedArrival String
   returnKm       Float?
